@@ -213,6 +213,7 @@ def update_log(nint, nsend, nclear, nrefresh, log, auto_on, rate,
         return log[-1000:], f"Refresh"
     if trig == "btn-send":
         try:
+
             mid = int(str(mid_in).strip(), 0)
             dlc = max(0,min(8,int(dlc_in or 0)))
             bytes_in = str(data_in).strip().split()
@@ -223,6 +224,16 @@ def update_log(nint, nsend, nclear, nrefresh, log, auto_on, rate,
             interp,val = interpret_can_message(msg)
             msg["interpreted"],msg["value"]=interp,val
             log.append(msg)
+
+            b = bytes(int(x, 16) for x in bytes_in)
+            msg = can.Message(
+                arbitration_id=mid,
+                data=b,
+                is_extended_id=False
+            )
+
+            bus.send(msg)
+
             return log[-1000:], f"Sent {hex(mid)}"
         except Exception as e:
             return log, f"Error: {e}"
