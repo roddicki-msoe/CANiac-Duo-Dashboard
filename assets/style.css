@@ -1,0 +1,109 @@
+/* Global font + smoother look */
+body {
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    background: #fafafa;
+    margin: 0;
+    padding: 0;
+}
+
+/* Title */
+h2 {
+    text-align: center;
+    margin-top: 8px;
+    margin-bottom: 18px;
+    font-weight: 600;
+}
+
+/* Section cards */
+div[style*="border: 1px solid #ddd"] {
+    background: white;
+    border: 1px solid #e2e2e2 !important;
+    border-radius: 10px !important;
+    padding: 18px !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* Buttons */
+button, .dash-button {
+    background: #0078ff;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: 0.18s ease-in-out;
+}
+
+button:hover, .dash-button:hover {
+    background: #005fcc;
+}
+
+/* Secondary buttons (Clear, Download) */
+button[id="btn-clear"], button[id="btn-download"] {
+    background: #666;
+}
+
+button[id="btn-clear"]:hover, button[id="btn-download"]:hover {
+    background: #444;
+}
+
+/* Inputs */
+input, .dash-input, textarea {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 6px;
+    margin-top: 4px;
+    font-size: 14px;
+}
+
+/* Radio items inline */
+.css-1wa3eu0 {
+    margin-top: 4px;
+}
+
+/* Tabs */
+.tab--selected {
+    background: #ffffff !important;
+    border-top: 3px solid #0078ff !important;
+    font-weight: 600 !important;
+}
+
+.tab {
+    background: #f1f1f1 !important;
+    padding: 10px 16px !important;
+    border-radius: 4px 4px 0 0 !important;
+    margin-right: 6px !important;
+    font-size: 15px;
+}
+
+/* DataTable improvements */
+.dash-table-container .dash-spreadsheet-container table {
+    border-collapse: collapse !important;
+}
+
+.dash-table-container .dash-spreadsheet-container td,
+.dash-table-container .dash-spreadsheet-container th {
+    padding: 6px 10px !important;
+    border-bottom: 1px solid #e6e6e6 !important;
+    font-family: "Consolas", monospace;
+}
+
+.dash-table-container .dash-spreadsheet-container tr:hover {
+    background: #f5f9ff !important;
+}
+
+/* Graph area */
+.js-plotly-plot {
+    background: white !important;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    padding: 6px;
+}
+
+/* Responsive layout spacing adjustments */
+@media (max-width: 900px) {
+    div[style*="display:flex"] {
+        flex-direction: column !important;
+    }
+}
