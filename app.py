@@ -14,6 +14,20 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 from dash import Dash, html, dcc, Input, Output, State, ctx, dash_table
 
+
+import can
+import threading
+import queue
+
+from flask import Response
+
+CAN_CHANNEL = "can0"
+CAN_IFACE   = "socketcan"
+
+bus = can.Bus(channel=CAN_CHANNEL, interface=CAN_IFACE, receive_own_messages=False)
+
+rx_queue = queue.Queue()
+
 # -------------------------------------------------------------------------
 # Helper: CST timestamps
 def now_ms():
@@ -58,13 +72,41 @@ def random_can_message():
     msg["interpreted"], msg["value"] = interp, val
     return msg
 
+
+# Background receive loop
+def can_rx_worker():
+    while True:
+        msg = bus.recv(timeout=1.0)   # blocking read
+        if msg is None:
+            continue
+
+        # Convert python-can msg into your dashboard format
+        data_hex = " ".join(f"{b:02X}" for b in msg.data)
+
+        frame = {
+            "timestamp": now_ms(),
+            "id": hex(msg.arbitration_id),
+            "extended": msg.is_extended_id,
+            "dlc": msg.dlc,
+            "data": data_hex,
+        }
+
+        interp, val = interpret_can_message(frame)
+        frame["interpreted"], frame["value"] = interp, val
+
+        rx_queue.put(frame)
+
+# Start receiver thread
+threading.Thread(target=can_rx_worker, daemon=True).start()
+
 # -------------------------------------------------------------------------
 # Dash setup
+
 app = Dash(__name__)
 server = app.server
 
 app.layout = html.Div([
-    html.H2("CANiac Duo — Hybrid Fake CAN Dashboard (CST)"),
+    html.H2("CANiac Duo — CAN Dashboard 1"),
 
     # --- Manual controls block ---
     html.Div([
@@ -88,6 +130,7 @@ app.layout = html.Div([
             html.Button("Send Message", id="btn-send", n_clicks=0, style={"marginTop":"6px"}),
             html.Button("Clear Log", id="btn-clear", n_clicks=0, style={"marginLeft":"6px"}),
             html.Button("Download CSV", id="btn-download", n_clicks=0, style={"marginLeft":"6px"}),
+            html.Button("Refresh Data", id="btn-refresh", n_clicks=0, style={"marginLeft":"6px"}),
             dcc.Download(id="download-log"),
             html.Div(id="send-feedback", style={"marginTop":"6px","color":"green"})
         ], style={"padding":"10px","flex":"1","border":"1px solid #ddd","borderRadius":"6px"}),
@@ -146,6 +189,7 @@ def toggle_auto(enable, rate):
     Input("interval-auto","n_intervals"),
     Input("btn-send","n_clicks"),
     Input("btn-clear","n_clicks"),
+    Input("btn-refresh","n_clicks"),
     State("store-log","data"),
     State("auto-enable","value"),
     State("auto-rate","value"),
@@ -155,14 +199,21 @@ def toggle_auto(enable, rate):
     State("input-data","value"),
     prevent_initial_call=True
 )
-def update_log(nint, nsend, nclear, log, auto_on, rate,
+def update_log(nint, nsend, nclear, nrefresh, log, auto_on, rate,
                mid_in, ext_in, dlc_in, data_in):
     trig = ctx.triggered_id
     log = list(log or [])
+    # Pull all received CAN frames into log
+    while not rx_queue.empty():
+        log.append(rx_queue.get())
+
     if trig == "btn-clear":
         return [], "Log cleared."
+    if trig == "btn-refresh":
+        return log[-1000:], f"Refresh"
     if trig == "btn-send":
         try:
+
             mid = int(str(mid_in).strip(), 0)
             dlc = max(0,min(8,int(dlc_in or 0)))
             bytes_in = str(data_in).strip().split()
@@ -173,6 +224,16 @@ def update_log(nint, nsend, nclear, log, auto_on, rate,
             interp,val = interpret_can_message(msg)
             msg["interpreted"],msg["value"]=interp,val
             log.append(msg)
+
+            b = bytes(int(x, 16) for x in bytes_in)
+            msg = can.Message(
+                arbitration_id=mid,
+                data=b,
+                is_extended_id=False
+            )
+
+            bus.send(msg)
+
             return log[-1000:], f"Sent {hex(mid)}"
         except Exception as e:
             return log, f"Error: {e}"
@@ -242,5 +303,6 @@ def download_csv(n,log):
     return dcc.send_data_frame(df.to_csv,filename,index=False)
 
 # -------------------------------------------------------------------------
+
 if __name__=="__main__":
     app.run(debug=False, host="0.0.0.0", port=8050)
